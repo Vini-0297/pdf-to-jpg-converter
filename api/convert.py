@@ -1,7 +1,7 @@
 import base64
 from io import BytesIO
 from flask import Flask, request, jsonify
-from pdf2image import convert_from_bytes
+import fitz  # PyMuPDF
 
 app = Flask(__name__)
 
@@ -15,26 +15,26 @@ def convert_pdf_to_jpg():
         return jsonify({"error": "File must be a PDF"}), 400
 
     try:
-        # Convert PDF to images
-        images = convert_from_bytes(pdf_file.read())
+        # Open the PDF file using PyMuPDF
+        pdf_document = fitz.open(stream=pdf_file.read(), filetype="pdf")
         image_data_list = []
 
-        # Convert each image to Base64
-        for i, image in enumerate(images):
-            img_io = BytesIO()
-            image.save(img_io, 'JPEG', quality=95)
-            img_io.seek(0)
-
-            # Convert image bytes to Base64 and add to list
+        # Convert each page to an image
+        for i in range(len(pdf_document)):
+            page = pdf_document.load_page(i)  # Load the page
+            pix = page.get_pixmap()  # Render the page to a pixmap (image)
+            img_io = BytesIO(pix.tobytes("jpeg"))  # Convert to JPEG
             img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')
             image_data_list.append({
                 'page': i + 1,
                 'image': img_base64
             })
 
+        pdf_document.close()  # Close the PDF document
+
         # Return a JSON response containing the Base64-encoded images
         return jsonify({
-            "pages": len(images),
+            "pages": len(image_data_list),
             "images": image_data_list
         }), 200
 
