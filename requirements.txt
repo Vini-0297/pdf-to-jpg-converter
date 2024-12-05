@@ -1,4 +1,4 @@
-Flask
+Flask==2.3.2
 pdf2image
 Pillow
-PyMuPDF
+PyMuPDF==1.22.5
